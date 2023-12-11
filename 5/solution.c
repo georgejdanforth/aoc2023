@@ -10,6 +10,14 @@
 uint32_t num_seeds;
 uint64_t seeds[32] = {0};
 
+typedef struct seed_range {
+	uint64_t start;
+	uint64_t length;
+} seed_range_t;
+
+uint32_t num_seed_ranges;
+seed_range_t seed_ranges[16];
+
 typedef struct map {
 	uint64_t dest_range_start;
 	uint64_t source_range_start;
@@ -68,6 +76,26 @@ void parse_seeds(char *line)
 	}
 }
 
+void parse_seed_ranges(char *line)
+{
+	char **p;
+	seed_range_t seed_range;
+
+	p = &line;
+
+	num_seed_ranges = 0;
+	consume_until_digit(p);
+	while (**p != '\0')
+	{
+		seed_range.start = parse_int(p);
+		consume_until_digit(p);
+		seed_range.length = parse_int(p);
+		consume_until_digit(p);
+
+		memcpy(&seed_ranges[num_seed_ranges++], &seed_range, sizeof(seed_range_t));
+	}
+}
+
 map_t parse_map(char *line)
 {
 	char **p;
@@ -109,7 +137,10 @@ void parse_file(FILE *f)
 
 	num_seeds = 0;
 	read_line(f, buffer);
-	parse_seeds(buffer);
+	// Part 1
+	// parse_seeds(buffer);
+	// Part 2
+	parse_seed_ranges(buffer);
 
 	read_line(f, buffer);
 	assert(*buffer == '\n');
@@ -158,6 +189,21 @@ uint64_t apply_mapping(uint64_t val, map_t *maps, uint32_t num_maps)
 	return val;
 }
 
+uint64_t reverse_mapping(uint64_t val, map_t *maps, uint32_t num_maps)
+{
+	uint32_t i;
+	map_t map;
+
+	for (i = 0; i < num_maps; i++)
+	{
+		map = maps[i];
+		if (val >= map.dest_range_start && val < map.dest_range_start + map.length)
+			return map.source_range_start + (val - map.dest_range_start);
+	}
+
+	return val;
+}
+
 void apply_mapping_to_vals(uint64_t *vals, uint32_t num_vals, map_t *maps, uint32_t num_maps)
 {
 	uint32_t i;
@@ -190,6 +236,45 @@ uint64_t get_min_location(void)
 	return min_location;
 }
 
+bool is_in_seed_ranges(uint64_t seed)
+{
+	int i;
+	seed_range_t seed_range;
+
+	for (i = 0; i < num_seed_ranges; i++)
+	{
+		seed_range = seed_ranges[i];
+		if (seed >= seed_range.start && seed < seed_range.start + seed_range.length)
+			return true;
+	}
+
+	return false;
+}
+
+uint64_t get_min_location_for_seed_ranges(void)
+{
+	uint64_t min_location, seed;
+
+	min_location = 0;
+
+	while (1)
+	{
+		seed = reverse_mapping(min_location, humidity_to_location_maps, num_humidity_to_location_maps);
+		seed = reverse_mapping(seed, temperature_to_humidity_maps, num_temperature_to_humidity_maps);
+		seed = reverse_mapping(seed, light_to_temperature_maps, num_light_to_temperature_maps);
+		seed = reverse_mapping(seed, water_to_light_maps, num_water_to_light_maps);
+		seed = reverse_mapping(seed, fertilizer_to_water_maps, num_fertilizer_to_water_maps);
+		seed = reverse_mapping(seed, soil_to_fertilizer_maps, num_soil_to_fertilizer_maps);
+		seed = reverse_mapping(seed, seed_to_soil_maps, num_seed_to_soil_maps);
+
+		if (is_in_seed_ranges(seed)) break;
+
+		min_location++;
+	}
+
+	return min_location;
+}
+
 int main(void)
 {
 	FILE *f;
@@ -205,7 +290,10 @@ int main(void)
 	parse_file(f);
 	fclose(f);
 
-	result = get_min_location();
+	// Part 1
+	// result = get_min_location();
+	// Part 2
+	result = get_min_location_for_seed_ranges();
 	printf("Result: %llu\n", result);
 
 	return 0;
