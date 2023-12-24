@@ -53,3 +53,6 @@ dkms.conf
 
 solution
 input*
+
+.cache/
+compile_commands.json
